@@ -58,11 +58,23 @@ $daysago   = $INPUT->int('d');
 $default = ($output == 'line') ? 'val' : 'cnt';
 $orderby   = $INPUT->str('o', $default, true);
 
+$keyfixed = $INPUT->str('keyfixed');
+$valuefixed = $INPUT->str('valuefixed');
+
+$options['orderby']    = $orderby;
+$options['startdate']  = $startdate;
+$options['enddate']    = $enddate;
+$options['daysago']    = $daysago;
+$options['keyfixed']   = $keyfixed;
+$options['valuefixed'] = $valuefixed;
+
 $default = ($output == 'line') ? false : true;
 $usepercentage = $INPUT->bool('p', $default);
 
 //retrieve data
-$counts = $popularity->getCounts($key, $orderby, $startdate, $enddate, $daysago);
+//$counts = $popularity->getCounts($key, $orderby, $startdate, $enddate, $daysago);
+
+$counts = $popularity->getCounts($key, $options);
 if($usepercentage) {
     $MAX = $popularity->getNumberOfSubmittingWikis($startdate, $enddate, $daysago);
 } else {

@@ -23,7 +23,14 @@ class helper_plugin_pluginrepo_popularity extends DokuWiki_Plugin {
      * @param int    $daysago   if $startdate not set, retrieve the submits for this number of days
      * @return array
      */
-    public function getCounts($key, $orderby = 'cnt', $startdate = '', $enddate = '', $daysago = 0) {
+    //public function getCounts($key, $orderby = 'cnt', $startdate = '', $enddate = '', $daysago = 0) {
+    public function getCounts($key, $options) {
+        $orderby = isset($options['orderby']) ? $options['orderby'] : 'cnt';
+        $startdate = isset($options['startdate']) ? $options['startdate'] : '';
+        $enddate = isset($options['enddate']) ? $options['enddate'] : '';
+        $daysago = isset($options['daysago']) ? $options['daysago'] : 0;
+        $keyfixed = isset($options['keyfixed']) ? $options['keyfixed'] : null;
+        $valuefixed = isset($options['valuefixed']) ? $options['valuefixed'] : null;
         $db = $this->hlp->_getPluginsDB();
         if(!$db) return array();
 
@@ -48,7 +55,7 @@ class helper_plugin_pluginrepo_popularity extends DokuWiki_Plugin {
         $replacements[':key'] = $key;
 
         // add time restrictions
-        $where = $this->buildWhere($startdate, $enddate, $daysago, $replacements);
+        $where = $this->buildWhere($startdate, $enddate, $daysago, $replacements, array('keyfixed' => $keyfixed, 'valuefixed'=>$valuefixed));
 
         $orderbyfields = array('val', 'cnt');
         if(!in_array($orderby, $orderbyfields)) {
@@ -107,14 +114,16 @@ class helper_plugin_pluginrepo_popularity extends DokuWiki_Plugin {
      * @param array  $replacements  (reference) can be extended with additional keys
      * @return string
      */
-    public function buildWhere($startdate, $enddate, $daysago, &$replacements) {
+    public function buildWhere($startdate, $enddate, $daysago, &$replacements, $subrestriction = array()) {
+        dbglog("keyfixed: " . $subrestriction['keyfixed']);
+        dbglog("valuefixed: " . $subrestriction['valuefixed']);
         $where = '';
         if($startdate OR $daysago) {
             if($startdate) {
                 $where .= " AND dt > UNIX_TIMESTAMP( :start )";
                 $replacements[':start'] = $startdate;
                 if($enddate) {
-                    $where .= "  AND dt < UNIX_TIMESTAMP( :end )";
+                    $where .= " AND dt < UNIX_TIMESTAMP( :end )";
                     $replacements[':end'] = $enddate;
                 }
             } else {
@@ -122,6 +131,22 @@ class helper_plugin_pluginrepo_popularity extends DokuWiki_Plugin {
                 $where .= " AND dt > $ago";
             }
         }
+
+        $subwhere = '';
+        if (!empty($subrestriction['keyfixed']) && !empty($subrestriction['valuefixed'])) {
+            $keyfixed = $subrestriction['keyfixed'];
+            $valuefixed = $subrestriction['valuefixed'];
+            $subwhere .= " AND uid IN (
+                    SELECT uid
+                    FROM popularity pop
+                    WHERE pop.key = :keyfixed
+                    AND `value` LIKE :valuefixed
+                    $where)";
+            $where .= $subwhere;
+            $replacements[':keyfixed'] = $keyfixed;
+            $replacements[':valuefixed'] = $valuefixed . "%";
+        }
+        dbglog($where);
         return $where;
     }
 }
